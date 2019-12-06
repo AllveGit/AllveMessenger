@@ -13,4 +13,7 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 
+#include <WinSock2.h>
+#pragma comment(lib, "ws2_32.lib")
+
 #endif //PCH_H

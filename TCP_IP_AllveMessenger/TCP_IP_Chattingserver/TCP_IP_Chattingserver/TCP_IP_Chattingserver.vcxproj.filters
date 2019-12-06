@@ -4,30 +4,36 @@
     <Filter Include="PreCompile">
       <UniqueIdentifier>{f0e8099d-e100-4fce-808b-c3a7ac7cef68}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Utils">
-      <UniqueIdentifier>{ca070942-b42d-4d59-a8de-a4da490866f0}</UniqueIdentifier>
+    <Filter Include="Server">
+      <UniqueIdentifier>{ad3e62d2-1664-443c-891a-aa0e83fe942c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Utils\Log">
-      <UniqueIdentifier>{7215c04b-9cbe-4bdb-85b9-1dca37af81c4}</UniqueIdentifier>
+    <Filter Include="Common">
+      <UniqueIdentifier>{aaf3b6d0-5d43-4af7-bf06-2f1277ef1937}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
       <Filter>PreCompile</Filter>
     </ClCompile>
-    <ClCompile Include="TCP_IP_Chattingserver.cpp">
+    <ClCompile Include="CChattingServer.cpp">
+      <Filter>Server</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
       <Filter>PreCompile</Filter>
     </ClCompile>
-    <ClCompile Include="CLog.cpp">
-      <Filter>Utils\Log</Filter>
+    <ClCompile Include="..\Common\CLog.cpp">
+      <Filter>Common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>PreCompile</Filter>
     </ClInclude>
-    <ClInclude Include="CLog.h">
-      <Filter>Utils\Log</Filter>
+    <ClInclude Include="CChattingServer.h">
+      <Filter>Server</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\CLog.h">
+      <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

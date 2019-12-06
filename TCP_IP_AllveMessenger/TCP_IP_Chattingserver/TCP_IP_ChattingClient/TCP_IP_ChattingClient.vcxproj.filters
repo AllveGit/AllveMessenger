@@ -4,18 +4,36 @@
     <Filter Include="PreCompile">
       <UniqueIdentifier>{a032b904-2682-4c07-a842-5be8180ace59}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Client">
+      <UniqueIdentifier>{26889945-8f6b-4d1b-a4fe-92c850c5bc87}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Common">
+      <UniqueIdentifier>{bec12097-154f-4d3b-a991-56d9d527f6d9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="TCP_IP_ChattingClient.cpp">
-      <Filter>PreCompile</Filter>
-    </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>PreCompile</Filter>
+    </ClCompile>
+    <ClCompile Include="main.cpp">
+      <Filter>PreCompile</Filter>
+    </ClCompile>
+    <ClCompile Include="CChattingClient.cpp">
+      <Filter>Client</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Common\CLog.cpp">
+      <Filter>Common</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>PreCompile</Filter>
+    </ClInclude>
+    <ClInclude Include="CChattingClient.h">
+      <Filter>Client</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Common\CLog.h">
+      <Filter>Common</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

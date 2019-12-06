@@ -4,23 +4,23 @@
 
 void CLog::ReportLog(const char* LogMessage, ELogType _LogType)
 {
-	char LogTypeMessage[20];
+	char LogTypeMessage[30] = "";
 	bool bError = false;
 
 	switch (_LogType)
 	{
 	case ELogType::LOG_DEFAULT:
-		sprintf(LogTypeMessage, "LogType( Default ) : ");
+		sprintf(LogTypeMessage, "%s", "LogType ( Default ) : ");
 		break;
 	case ELogType::LOG_WARNING:
-		sprintf(LogTypeMessage, "LogType( Warning ) : ");
+		sprintf(LogTypeMessage, "%s", "LogType ( Warning ) : ");
 		break;
 	case ELogType::LOG_ERROR:
-		sprintf(LogTypeMessage, "LogType( Error ) : ");
+		sprintf(LogTypeMessage, "%s", "LogType ( Error ) : ");
 		bError = true;
 		break;
 	default:
-		sprintf(LogTypeMessage, "LogType( Unknown ) : ");
+		sprintf(LogTypeMessage, "%s", "LogType ( Unknown ) : ");
 		break;
 	}
 	
