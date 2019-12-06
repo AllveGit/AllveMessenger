@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="PreCompile">
+      <UniqueIdentifier>{f0e8099d-e100-4fce-808b-c3a7ac7cef68}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils">
+      <UniqueIdentifier>{ca070942-b42d-4d59-a8de-a4da490866f0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Utils\Log">
+      <UniqueIdentifier>{7215c04b-9cbe-4bdb-85b9-1dca37af81c4}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="pch.cpp">
+      <Filter>PreCompile</Filter>
+    </ClCompile>
+    <ClCompile Include="TCP_IP_Chattingserver.cpp">
+      <Filter>PreCompile</Filter>
+    </ClCompile>
+    <ClCompile Include="CLog.cpp">
+      <Filter>Utils\Log</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h">
+      <Filter>PreCompile</Filter>
+    </ClInclude>
+    <ClInclude Include="CLog.h">
+      <Filter>Utils\Log</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
