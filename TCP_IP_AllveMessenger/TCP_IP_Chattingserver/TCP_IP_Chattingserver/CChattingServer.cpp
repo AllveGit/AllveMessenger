@@ -5,6 +5,9 @@
 #define ACTIVE_THREAD_NUM 3
 #define MAX_USER 10
 
+std::list<HANDLEDATA*> userList;
+std::mutex mtx_Lock;
+
 const char* ServerIP = "127.0.0.1";
 const char* ServerPort = "9999";
 
@@ -70,18 +73,22 @@ void CChattingServer::Update()
 
 		std::cout << "[ 클라이언트 연결 ] : " << hCIntSock << std::endl;
 
-		handleData = new HANDLEDATA;
+		HANDLEDATA* handleData = new HANDLEDATA;
 		handleData->hSocket = hCIntSock;
 		memcpy(&(handleData->inSockAddr), &cIntAddr, addrLen);
 
 		//Overlapped 소켓이랑 CompletionPort 연결
 		CreateIoCompletionPort((HANDLE)hCIntSock, completionPort, (DWORD)handleData, 0);
 
-		messagePacket = new MESSAGE_PACKET;
+		MESSAGE_PACKET* messagePacket = new MESSAGE_PACKET;
 		memset(&(messagePacket->overlapped), 0, sizeof(OVERLAPPED));
 		messagePacket->wsaBuffer.len = BUFSIZE;
 		messagePacket->wsaBuffer.buf = messagePacket->message;
 		Flags = 0;
+
+		mtx_Lock.lock();
+		userList.push_back(handleData);
+		mtx_Lock.unlock();
 
 		WSARecv(handleData->hSocket,
 			&(messagePacket->wsaBuffer), 1,
@@ -100,7 +107,8 @@ DWORD WINAPI CompletionThread(LPVOID CompletionPortIO)
 	DWORD BytesTransferred;
 	HANDLEDATA* handleData;
 	MESSAGE_PACKET* messagePacket;	
-	DWORD flags;
+	DWORD flags = 0;
+	DWORD recvBytes = 0;
 
 	while (true)
 	{
@@ -113,6 +121,18 @@ DWORD WINAPI CompletionThread(LPVOID CompletionPortIO)
 
 		if (BytesTransferred == 0) //클라이언트가 연결 종료 요청
 		{
+			mtx_Lock.lock();
+			for (std::list<HANDLEDATA*>::iterator iter = userList.begin();
+				iter != userList.end(); ++iter)
+			{
+				if ((*iter)->hSocket == handleData->hSocket)
+				{
+					userList.erase(iter);
+					break;
+				}
+			}
+			mtx_Lock.unlock();
+
 			std::cout << "[ 클라이언트 종료 ] : " << handleData->hSocket << std::endl;
 			closesocket(handleData->hSocket);
 			delete handleData;
@@ -120,8 +140,41 @@ DWORD WINAPI CompletionThread(LPVOID CompletionPortIO)
 			continue;
 		}
 
-		messagePacket->wsaBuffer.len = BytesTransferred;
-		WSASend(handleData->hSocket, &messagePacket->wsaBuffer, 1,
-			NULL, 0, NULL, NULL);
+		else if (messagePacket->bRead)
+		{
+			std::cout << messagePacket->message << std::endl;
+
+			mtx_Lock.lock();
+			for (auto iter : userList)
+			{
+				DWORD sendBytes = 0;
+				flags = 0;
+
+				MESSAGE_PACKET* sendPacket = new MESSAGE_PACKET;
+				memset(&(sendPacket->overlapped), 0, sizeof(OVERLAPPED));
+				sendPacket->wsaBuffer.len = BytesTransferred;
+				sendPacket->wsaBuffer.buf = messagePacket->message;
+				sendPacket->bRead = false;
+
+				if (iter->hSocket != handleData->hSocket)
+				{
+					WSASend(iter->hSocket,
+						&sendPacket->wsaBuffer, 1, &sendBytes, flags, &(sendPacket->overlapped), NULL);
+				}
+			}
+			mtx_Lock.unlock();
+
+			flags = 0;
+
+			MESSAGE_PACKET* readPacket = new MESSAGE_PACKET;
+			memset(&(readPacket->overlapped), 0, sizeof(OVERLAPPED));
+			readPacket->wsaBuffer.len = BUFSIZE;
+			readPacket->wsaBuffer.buf = readPacket->message;
+			readPacket->bRead = true;
+
+			WSARecv(handleData->hSocket,
+				&(readPacket->wsaBuffer), 1,
+				&recvBytes, &flags, &(readPacket->overlapped), NULL);
+		}	
 	}
 }

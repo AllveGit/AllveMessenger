@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "CChattingClient.h"
-
-#include "CLog.h"
+#include <iostream>
 
 const char* ServerIP = "127.0.0.1";
 const char* ServerPort = "9999";
@@ -30,18 +29,75 @@ void CChattingClient::Init()
 	else
 		CLog::ReportLog("서버 연결 성공", ELogType::LOG_DEFAULT);
 
-	//WSASend()
+	std::cout << "닉네임을 입력하세요 : ";
+	std::cin >> nickname;
+
+	std::cout << "===== 채팅서버에 입장하였습니다 =====" << std::endl;
+
+	sendThread = std::thread([&]() { Send(); });
+	readThread = std::thread([&]() { Read(); });
 }
 
 void CChattingClient::Update()
 {
-	while (true)
+	while(true)
 	{
+		if (sendThread.joinable())
+			sendThread.join();
 
+		if (readThread.joinable())
+			readThread.join();
 	}
 }
 
 void CChattingClient::Destroy()
 {
 	WSACleanup();
+}
+
+void CChattingClient::Send()
+{
+	while (true)
+	{
+		DWORD sendBytes, dwFlags = 0;
+
+		MESSAGE_PACKET* packet = new MESSAGE_PACKET;
+		std::cin >> packet->message;
+
+		char message[BUFSIZE] = "";
+		sprintf(message, "[ %s ] : %s", nickname, packet->message);
+
+		memset(&packet->overlapped, 0, sizeof(OVERLAPPED));
+		packet->wsaBuffer.len = strlen(message) + 1;
+		packet->wsaBuffer.buf = message;
+		packet->bRead = false;
+
+		WSASend(hSocket, &packet->wsaBuffer, 1, &sendBytes, dwFlags, &packet->overlapped, NULL);
+	}
+}
+
+void CChattingClient::Read()
+{
+	while (true)
+	{
+		DWORD readBytes = 0;
+		DWORD dwFlags = 0;
+
+		WSAEVENT hEvent = WSACreateEvent();
+
+		MESSAGE_PACKET* packet = new MESSAGE_PACKET;
+		memset(&(packet->overlapped), 0, sizeof(OVERLAPPED));
+		packet->overlapped.hEvent = hEvent;
+		packet->wsaBuffer.len = BUFSIZE;
+		packet->wsaBuffer.buf = packet->message;
+		packet->bRead = true;
+
+		WSARecv(hSocket,
+			&(packet->wsaBuffer), 1,
+			&readBytes, &dwFlags, &(packet->overlapped), NULL);
+
+		WSAWaitForMultipleEvents(1, &hEvent, TRUE, WSA_INFINITE, FALSE);
+
+		std::cout << packet->message << std::endl;
+	}
 }
