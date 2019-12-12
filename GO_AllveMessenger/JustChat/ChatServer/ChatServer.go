@@ -62,6 +62,7 @@ func ReadMessage(user *Client) string {
 		packetSize -= len(messageData)
 	}
 
+	testtt.testt()
 	return messageData
 }
 
