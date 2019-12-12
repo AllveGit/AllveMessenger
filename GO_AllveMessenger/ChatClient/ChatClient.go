@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strings"
 )
 
+var nickname string
 var serverAndPort string = "127.0.0.1:9999"
 var quit bool = false
 
@@ -33,6 +35,8 @@ func SendMessage(connect net.Conn, sendChannelDone *chan bool) {
 	var messageBufferSize [8]byte
 	var packetSize int
 
+	var bNickName bool = true
+
 	for !quit {
 		// fmt.Scan(&packet.message)
 		in := bufio.NewReader(os.Stdin)
@@ -43,7 +47,13 @@ func SendMessage(connect net.Conn, sendChannelDone *chan bool) {
 			break
 		}
 
-		packet.message = line
+		if bNickName {
+			packet.message = nickname
+			bNickName = false
+		} else {
+			packet.message = line
+		}
+
 		packetSize = len(packet.message)
 		// fmt.Println(packetSize)
 
@@ -58,6 +68,11 @@ func SendMessage(connect net.Conn, sendChannelDone *chan bool) {
 		_, msgErr := connect.Write([]byte(packet.message))
 
 		if !errorCheck(msgErr) {
+			quit = true
+			break
+		}
+
+		if strings.Compare(packet.message, "quit\r\n") == 0 {
 			quit = true
 			break
 		}
@@ -114,9 +129,9 @@ func TryConnect(_serverAndPort string) net.Conn {
 }
 
 func main() {
-	var nickname string
 	fmt.Print("닉네임을 입력하세요 : ")
 	fmt.Scanln(&nickname)
+	nickname = "[N]" + nickname
 
 	connect := TryConnect(serverAndPort)
 

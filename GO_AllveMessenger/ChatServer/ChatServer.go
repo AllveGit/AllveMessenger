@@ -21,6 +21,7 @@ type messagePacket struct {
 }
 
 type Client struct {
+	name    string
 	connect net.Conn
 	end     bool
 }
@@ -96,17 +97,21 @@ func BroadCast(message string) {
 	}
 }
 
-func ManageUser() {
-
+func QuitClientCheck() {
 	for {
-		// for QuitClient := range QuitChannel {
-		// 	delete(users, QuitClient)
-		// 	QuitClient.end = true
-		// }
+		for QuitClient := range QuitChannel {
+			delete(users, QuitClient)
+			QuitClient.end = true
+		}
 
-		// for Messages := range MessageChannel {
-		// 	BroadCast(Messages)
-		// }
+	}
+}
+
+func MessageCheck() {
+	for {
+		for Messages := range MessageChannel {
+			BroadCast(Messages)
+		}
 	}
 }
 
@@ -117,12 +122,17 @@ func ClientReadMessage(user *Client) {
 		readedMessage := ReadMessage(user)
 
 		if strings.Compare(readedMessage, "quit\r\n") == 0 {
+			SendMessage(user, "quit")
 			QuitChannel <- *user
+		} else if strings.HasPrefix(readedMessage, "[N]") {
+			readedMessage = strings.TrimLeft(readedMessage, "[N]")
+			user.name = readedMessage
 		} else {
+			readedMessage = user.name + " : " + readedMessage
 			fmt.Println(readedMessage)
-			// MessageChannel <- readedMessage
+			MessageChannel <- readedMessage
 
-			BroadCast(readedMessage)
+			// BroadCast(readedMessage)
 		}
 	}
 }
@@ -158,7 +168,8 @@ func main() {
 
 	defer server.Close()
 
-	go ManageUser()
+	go QuitClientCheck()
+	go MessageCheck()
 
 	for {
 		newClient, err := server.Accept()
@@ -169,7 +180,7 @@ func main() {
 
 		fmt.Println("새로운 클라이언트가 서버에 들어왔습니다")
 
-		processClient := Client{newClient, false}
+		processClient := Client{"", newClient, false}
 
 		users[processClient] = true
 
