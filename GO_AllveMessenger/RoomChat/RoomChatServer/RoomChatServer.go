@@ -14,24 +14,23 @@ const (
 )
 
 type Room struct {
-	roomID     int
-	roomName   string
-	roomUsers  map[int]Client
-	msgChannel chan string
+	RoomName   string
+	RoomUsers  map[int]Client
+	MsgChannel chan string
 }
 
 type Client struct {
 	netID   int
 	inRoom  bool
-	roomID  int
-	curRoom *Room
+	end     bool
+	curRoom Room
 	connect net.Conn
 }
 
 type Server struct {
 	listener                net.Listener
-	users                   map[int]Client
-	rooms                   map[string]Room
+	Users                   map[int]Client
+	Rooms                   map[string]Room
 	clientQuitChannel       chan Client
 	roomCreateChannel       chan string
 	allRoomBroadcastChannel chan string
@@ -53,7 +52,7 @@ func ReadPacket(user *Client) string {
 	var headerSize int = 0
 	var messageData string = ""
 
-	readData := make([]byte, 100)
+	readData := make([]byte, 4096)
 	messagePacket := MessagePacket{0, ""}
 
 	readSize, msgErr := user.connect.Read(readData)
@@ -103,23 +102,42 @@ func SendPacket(user *Client, message string) {
 	ErrorCheck(msgErr)
 }
 
+func BroadCast(message string, room *Room) {
+	for _, user := range room.RoomUsers {
+		SendPacket(&user, message)
+	}
+}
+
+func RoomsChannelHandle(room *Room, server *Server) {
+	for {
+		for message := range room.MsgChannel {
+			BroadCast(message, room)
+		}
+	}
+}
+
 func ServerChannelHandle(server *Server) {
 	for {
 		select {
 		case quitClient := <-server.clientQuitChannel:
-			delete(server.users, quitClient.netID)
+
+			SendPacket(&quitClient, "quit")
+
+			delete(server.Users, quitClient.netID)
 
 			if quitClient.inRoom == true {
-				delete(quitClient.curRoom.roomUsers, quitClient.roomID)
+				delete(quitClient.curRoom.RoomUsers, quitClient.netID)
 			}
 
 			quitClient.connect.Close()
 
 			for quitClient = range server.clientQuitChannel {
-				delete(server.users, quitClient.netID)
+				SendPacket(&quitClient, "quit")
+
+				delete(server.Users, quitClient.netID)
 
 				if quitClient.inRoom == true {
-					delete(quitClient.curRoom.roomUsers, quitClient.roomID)
+					delete(quitClient.curRoom.RoomUsers, quitClient.netID)
 				}
 
 				quitClient.connect.Close()
@@ -128,41 +146,62 @@ func ServerChannelHandle(server *Server) {
 		case createRoomName := <-server.roomCreateChannel:
 			roomUsers := make(map[int]Client)
 			roomMsgChannel := make(chan string, MAX_USER_NUM)
-			newRoom := Room{0, createRoomName, roomUsers, roomMsgChannel}
-			server.rooms[createRoomName] = newRoom
-		}
-	}
-}
+			newRoom := Room{createRoomName, roomUsers, roomMsgChannel}
+			server.Rooms[createRoomName] = newRoom
 
-func UpdateUsers(server *Server) {
-	for {
-		for _, client := range server.users {
-			UpdateUser(&client, server)
+			go RoomsChannelHandle(&newRoom, server)
 		}
 	}
 }
 
 func UpdateUser(user *Client, server *Server) {
-	messagePacket := ReadPacket(user)
+	for !user.end {
+		messagePacket := ReadPacket(user)
 
-	if strings.HasPrefix(messagePacket, "[ROOMCREATE]") {
-		messagePacket = strings.TrimLeft(messagePacket, "[ROOMCREATE]")
-		server.roomCreateChannel <- messagePacket
-	} else if strings.HasPrefix(messagePacket, "[ROOMFIND]") {
-		var roomListInfo string = ""
-		var roomIndex int = 0
+		if strings.HasPrefix(messagePacket, "quit") {
+			user.end = true
+			server.clientQuitChannel <- *user
+		} else if strings.HasPrefix(messagePacket, "[ROOMCREATE]") { //방 생성 명령
+			messagePacket = strings.TrimLeft(messagePacket, "[ROOMCREATE]")
+			server.roomCreateChannel <- messagePacket
+		} else if strings.HasPrefix(messagePacket, "[ROOMFIND]") { //방 리스트 불러오기 명령
+			var roomListInfo string = ""
+			var roomIndex int = 0
 
-		for roomName, _ := range server.rooms {
-			var roomInfo string = ""
-			roomInfo = fmt.Sprintf("%d - %s\n", roomIndex, roomName)
-			roomListInfo += roomInfo
-			roomIndex += 1
+			for roomName, _ := range server.Rooms {
+				var roomInfo string = ""
+				roomInfo = fmt.Sprintf("%d - %s\n", roomIndex, roomName)
+				roomListInfo += roomInfo
+				roomIndex += 1
+			}
+
+			SendPacket(user, roomListInfo)
+
+			roomListInfo = ""
+			roomIndex = 0
+		} else if strings.HasPrefix(messagePacket, "[ROOMIN]") { //방 들어가기 명령
+			messagePacket = strings.TrimLeft(messagePacket, "[ROOMIN]")
+
+			_, isContain := (server.Rooms[messagePacket])
+
+			if !isContain {
+				SendPacket(user, "그런 이름을 가진 채팅방이 없습니다")
+				return
+			}
+
+			if user.inRoom == true {
+				delete(user.curRoom.RoomUsers, user.netID)
+			}
+
+			user.curRoom = (server.Rooms[messagePacket])
+			user.inRoom = true
+			server.Rooms[messagePacket].RoomUsers[user.netID] = *user
+
+			var roomInNotice string = server.Rooms[messagePacket].RoomName + " 채팅방에 입장하였습니다"
+			SendPacket(user, roomInNotice)
+		} else if user.inRoom == true {
+			user.curRoom.MsgChannel <- messagePacket
 		}
-
-		SendPacket(user, roomListInfo)
-
-		roomListInfo = ""
-		roomIndex = 0
 	}
 }
 
@@ -188,7 +227,6 @@ func main() {
 	server := ServerStart()
 
 	go ServerChannelHandle(&server)
-	go UpdateUsers(&server)
 
 	for {
 		tryConnectClient, err := server.listener.Accept()
@@ -200,10 +238,12 @@ func main() {
 
 		fmt.Println("새로운 클라이언트가 접속하였습니다")
 
-		newClient := Client{iUserNum, false, 0, nil, tryConnectClient}
+		newClient := Client{iUserNum, false, false, Room{}, tryConnectClient}
 
-		server.users[newClient.netID] = newClient
+		server.Users[newClient.netID] = newClient
 
 		iUserNum += 1
+
+		go UpdateUser(&newClient, &server)
 	}
 }

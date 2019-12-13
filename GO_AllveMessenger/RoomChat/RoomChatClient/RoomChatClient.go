@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 const (
@@ -34,6 +35,11 @@ func ErrorCheck(err error) {
 	}
 }
 
+func quit(client *Client) {
+	time.Sleep(time.Second * 3)
+	client.quit = true
+}
+
 func SendPacket(client *Client) {
 
 	var message string = ""
@@ -46,22 +52,28 @@ func SendPacket(client *Client) {
 
 		message = line
 
-		if strings.Compare(message, "1\r\n") == 0 {
+		if strings.Compare(message, "quit\r\n") == 0 {
+			go quit(client)
+		} else if strings.Compare(message, "1\r\n") == 0 {
 			fmt.Println("생성할 채팅방 이름을 입력해주세요 : ")
 
-			in := bufio.NewReader(os.Stdin)
-			line, inputErr := in.ReadString('\n')
+			roomIn := bufio.NewReader(os.Stdin)
+			roomName, inputErr := roomIn.ReadString('\n')
 			ErrorCheck(inputErr)
 
-			message = "[ROOMCREATE]" + line
+			message = "[ROOMCREATE]" + roomName
 		} else if strings.Compare(message, "2\r\n") == 0 {
 			fmt.Println("채팅방 리스트들을 불러옵니다")
 
-			in := bufio.NewReader(os.Stdin)
-			line, inputErr := in.ReadString('\n')
+			message = "[ROOMFIND]"
+		} else if strings.Compare(message, "3\r\n") == 0 {
+			fmt.Println("들어갈 채팅방 이름을 입력해주세요 : ")
+
+			roomIn := bufio.NewReader(os.Stdin)
+			roomName, inputErr := roomIn.ReadString('\n')
 			ErrorCheck(inputErr)
 
-			message = "[ROOMFIND]" + line
+			message = "[ROOMIN]" + roomName
 		}
 
 		messagePacket := MessagePacket{len(message), message}
@@ -74,6 +86,7 @@ func SendPacket(client *Client) {
 
 		ErrorCheck(msgErr)
 	}
+
 }
 
 func ReadPacket(client *Client) {
@@ -81,7 +94,7 @@ func ReadPacket(client *Client) {
 	var headerSize int = 0
 	var messageData string = ""
 
-	readData := make([]byte, 100)
+	readData := make([]byte, 4096)
 	messagePacket := MessagePacket{0, ""}
 
 	for !client.quit {
@@ -114,6 +127,8 @@ func ReadPacket(client *Client) {
 		}
 
 		fmt.Println(messageData)
+
+		messageData = ""
 	}
 }
 
@@ -141,7 +156,7 @@ func main() {
 
 	go ReadPacket(&client)
 
-	for {
+	for !client.quit {
 
 	}
 }
